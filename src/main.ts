@@ -1,8 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error(`Unhandled promise rejection: ${reason}`);
+  });
+
+  process.on('uncaughtException', (error) => {
+    logger.error(`Uncaught exception: ${error.message}`, error.stack);
+  });
+
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(
