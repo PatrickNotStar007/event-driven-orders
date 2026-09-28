@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { OrdersModule } from './orders/orders.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { AuditModule } from './audit/audit.module.js';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     OrdersModule,
     InventoryModule,
     NotificationsModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],
