@@ -5,7 +5,7 @@ import { Job } from 'bullmq';
 import { OrderCreatedEvent } from '../orders/events/order-created.event.js';
 import { ORDER_EVENTS } from '../orders/events/order-events.constants.js';
 
-@Processor(QUEUE_NAMES.ORDER_EVENTS)
+@Processor(QUEUE_NAMES.NOTIFICATIONS)
 export class NotificationProcess extends WorkerHost {
   private readonly logger = new Logger(NotificationProcess.name);
 

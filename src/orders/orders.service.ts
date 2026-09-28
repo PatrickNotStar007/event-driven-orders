@@ -9,6 +9,16 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from '../queues/queues.constants.js';
 import { Queue } from 'bullmq';
 
+const JOB_OPTIONS = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential',
+    delay: 2000,
+  },
+  removeOnComplete: 100,
+  removeOnFail: false,
+};
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -17,8 +27,10 @@ export class OrdersService {
 
   //   constructor(private readonly eventEmmiter: EventEmitter2) {}
   constructor(
-    @InjectQueue(QUEUE_NAMES.ORDER_EVENTS)
-    private readonly orderEventsQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.INVENTORY) private readonly inventoryQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS)
+    private readonly notificationsQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.PAYMENTS) private readonly paymentsQueue: Queue,
   ) {}
 
   async create(dto: CreateOrderDto): Promise<Order> {
@@ -45,19 +57,18 @@ export class OrdersService {
     //   new OrderCreatedEvent(order.id, order.userId, order.items, order.total),
     // );
 
-    this.orderEventsQueue.add(
-      ORDER_EVENTS.CREATED,
-      new OrderCreatedEvent(order.id, order.userId, order.items, order.total),
-      {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
-        removeOnComplete: 100,
-        removeOnFail: false,
-      },
+    const event = new OrderCreatedEvent(
+      order.id,
+      order.userId,
+      order.items,
+      order.total,
     );
+
+    Promise.all([
+      this.inventoryQueue.add(ORDER_EVENTS.CREATED, event, JOB_OPTIONS),
+      this.notificationsQueue.add(ORDER_EVENTS.CREATED, event, JOB_OPTIONS),
+      this.paymentsQueue.add(ORDER_EVENTS.CREATED, event, JOB_OPTIONS),
+    ]);
 
     return order;
   }
