@@ -5,6 +5,9 @@ import { randomUUID } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ORDER_EVENTS } from './events/order-events.constants.js';
 import { OrderCreatedEvent } from './events/order-created.event.js';
+import { InjectQueue } from '@nestjs/bullmq';
+import { QUEUE_NAMES } from '../queues/queues.constants.js';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class OrdersService {
@@ -12,9 +15,13 @@ export class OrdersService {
 
   private readonly orders: Order[] = [];
 
-  constructor(private readonly eventEmmiter: EventEmitter2) {}
+  //   constructor(private readonly eventEmmiter: EventEmitter2) {}
+  constructor(
+    @InjectQueue(QUEUE_NAMES.ORDER_EVENTS)
+    private readonly orderEventsQueue: Queue,
+  ) {}
 
-  create(dto: CreateOrderDto): Order {
+  async create(dto: CreateOrderDto): Promise<Order> {
     const total = dto.items.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0,
@@ -33,9 +40,23 @@ export class OrdersService {
 
     this.logger.log(`Order ${order.id} created for user ${order.userId}`);
 
-    this.eventEmmiter.emit(
+    // this.eventEmmiter.emit(
+    //   ORDER_EVENTS.CREATED,
+    //   new OrderCreatedEvent(order.id, order.userId, order.items, order.total),
+    // );
+
+    this.orderEventsQueue.add(
       ORDER_EVENTS.CREATED,
       new OrderCreatedEvent(order.id, order.userId, order.items, order.total),
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: false,
+      },
     );
 
     return order;

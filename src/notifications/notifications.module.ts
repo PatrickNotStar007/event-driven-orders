@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { NotificationsListener } from './notifications.listener.js';
+import { NotificationProcess } from './notification.processor.js';
 
 @Module({
-  providers: [NotificationsListener],
+  providers: [NotificationProcess],
 })
 export class NotificationsModule {}
