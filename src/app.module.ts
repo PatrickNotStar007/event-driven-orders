@@ -3,6 +3,9 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from '@nestjs/config';
+import { OrdersModule } from './orders/orders.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -14,6 +17,9 @@ import { ConfigModule } from '@nestjs/config';
       verboseMemoryLeak: true,
       ignoreErrors: false,
     }),
+    OrdersModule,
+    InventoryModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
