@@ -10,6 +10,7 @@ import { AuditModule } from './audit/audit.module.js';
 import { BullModule } from '@nestjs/bullmq';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
+import { RedisModule } from './common/redis/redis.module.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ExpressAdapter } from '@bull-board/express';
       verboseMemoryLeak: true,
       ignoreErrors: false,
     }),
+    RedisModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

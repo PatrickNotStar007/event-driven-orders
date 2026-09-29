@@ -5,12 +5,18 @@ import { Logger } from '@nestjs/common';
 import { PaymentGatewayService } from './payment-gateway.service.js';
 import { OrderCreatedEvent } from '../orders/events/order-created.event.js';
 import { ORDER_EVENTS } from '../orders/events/order-events.constants.js';
+import { IdepmotencyService } from './idempotency.service.js';
+
+const PAYMENT_IDEMPOTENCY_TTL_SECONDS = 60 * 60 * 24;
 
 @Processor(QUEUE_NAMES.PAYMENTS)
 export class PaymentsProcessor extends WorkerHost {
   private readonly logger = new Logger(PaymentsProcessor.name);
 
-  constructor(private readonly paymentGateway: PaymentGatewayService) {
+  constructor(
+    private readonly paymentGateway: PaymentGatewayService,
+    private readonly idempotencyService: IdepmotencyService,
+  ) {
     super();
   }
 
@@ -20,12 +26,33 @@ export class PaymentsProcessor extends WorkerHost {
     }
 
     const event = job.data;
+    const idempotencyKey = `payment:${event.orderId}`;
 
     this.logger.log(
       `Processing payment for order ${event.orderId} [attempt ${job.attemptsMade + 1}]`,
     );
 
-    await this.paymentGateway.charge(event.orderId, event.total);
+    const isNewReservation = await this.idempotencyService.reserve(
+      idempotencyKey,
+      PAYMENT_IDEMPOTENCY_TTL_SECONDS,
+    );
+
+    if (!isNewReservation) {
+      this.logger.warn(
+        `Order ${event.orderId} already has a reserved/completed payment - skipping duplicate charge [attempt ${job.attemptsMade + 1}]`,
+      );
+      return;
+    }
+
+    this.logger.warn(
+      `Idempotency key reserved for order ${event.orderId} - processing to charge`,
+    );
+
+    try {
+      await this.paymentGateway.charge(event.orderId, event.total);
+    } catch {
+      await this.idempotencyService.release(idempotencyKey);
+    }
 
     if (job.attemptsMade === 0) {
       throw new Error(
